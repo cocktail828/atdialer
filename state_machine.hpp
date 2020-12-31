@@ -6,6 +6,8 @@ typedef enum class __MACHINE_STATE
     STATE_INVALID = -1,
     STATE_START,
     STATE_SIM_READY,
+    STATE_REGISTERED,
+    STATE_CONFIG_DONE,
     STATE_CONNECT,
     STATE_DISCONNECT,
 } machine_state;

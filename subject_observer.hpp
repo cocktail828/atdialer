@@ -10,6 +10,7 @@ public:
     IObserver() {}
     virtual ~IObserver() {}
     virtual void update(const std::string &) = 0;
+    virtual void update() = 0;
 };
 
 class ISubject
@@ -23,6 +24,11 @@ public:
 
     virtual void addObserver(IObserver *o) final
     {
+        for (auto iter = observers.begin(); iter != observers.end(); iter++)
+        {
+            if (*iter == o)
+                return;
+        }
         observers.push_back(o);
     }
 

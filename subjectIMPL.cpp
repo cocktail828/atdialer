@@ -10,6 +10,7 @@
 
 #include "subjectIMPL.hpp"
 #include "subject_observer.hpp"
+#include "scopeguard.hpp"
 
 ttyReader::~ttyReader()
 {
@@ -36,7 +37,10 @@ void ttyReader::init()
 
     ttyfd = ::open(ttydev.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (ttyfd < 0)
+    {
+        std::cerr << "fail to open " << ttydev << std::endl;
         return;
+    }
 
     memset(&tio, 0, sizeof(tio));
     tio.c_iflag = 0;
@@ -51,7 +55,9 @@ void ttyReader::init()
     retval = tcgetattr(ttyfd, &settings);
     if (-1 == retval)
     {
-        std::cerr << "setUart error" << std::endl;
+        close(ttyfd);
+        ttyfd = -1;
+        std::cerr << "init tty error" << std::endl;
         return;
     }
     cfmakeraw(&settings);
@@ -61,21 +67,33 @@ void ttyReader::init()
 }
 
 /**
-     * create a new thread to monitor the tty device
-     */
+ * create a new thread to monitor the tty device
+ */
 void ttyReader::polling()
 {
+    epoll_event events[10];
     int epfd = epoll_create(10);
+    auto pollid = std::this_thread::get_id();
 
     epoll_event event;
     event.data.fd = ttyfd;
     event.events = EPOLLIN | EPOLLRDHUP;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, ttyfd, &event);
 
-    auto pollid = std::this_thread::get_id();
+    ON_SCOPE_EXIT
+    {
+        std::cerr << "polling thread quit polling" << std::endl;
+        if (ttyfd)
+            close(ttyfd);
+        ttyfd = -1;
+        for (auto iter = observers.begin(); iter != observers.end(); iter++)
+            (*iter)->update();
+        observers.clear();
+    };
+
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, ttyfd, &event))
+        return;
 
     std::cerr << "polling thread start polling, thread id " << pollid << std::endl;
-    epoll_event events[10];
     do
     {
         int num = epoll_wait(epfd, events, 10, 3000);
@@ -88,15 +106,9 @@ void ttyReader::polling()
             for (int i = 0; i < num; i++)
             {
                 // serial closed?
-                if (events[i].events & EPOLLRDHUP)
-                {
-                    break;
-                }
-
-                if (events[i].events & (EPOLLERR | EPOLLHUP))
-                {
-                    break;
-                }
+                if ((events[i].events & EPOLLRDHUP) ||
+                    (events[i].events & (EPOLLERR | EPOLLHUP)))
+                    return;
 
                 if (events[i].events & EPOLLIN)
                 {
@@ -105,24 +117,23 @@ void ttyReader::polling()
                 }
             }
         }
+
     } while (1);
-    std::cerr << "polling thread quit polling" << std::endl;
 }
 
 bool ttyReader::sendAsync(const std::string &req)
 {
-    std::lock_guard<std::mutex> _lk(rwlock);
-
     if (ttyfd < 0 || req.size() == 0)
-        return 0;
+        return false;
 
-    return write(ttyfd, req.c_str(), req.size());
+    ssize_t ret = write(ttyfd, req.c_str(), req.size());
+    if (ret < 0)
+        return false;
+    return (size_t)ret == req.size();
 }
 
 bool ttyReader::recvAsync()
 {
-    std::lock_guard<std::mutex> _lk(rwlock);
-
     if (ttyfd < 0)
         return false;
 
@@ -136,9 +147,6 @@ bool ttyReader::ready() { return (ttyfd > 0); }
 void ttyReader::notifyAll()
 {
     const std::string respstr(reinterpret_cast<const char *>(recvbuf));
-    if (observers.size())
-    {
-        auto o = observers.front();
-        o->update(respstr);
-    }
+    for (auto iter = observers.begin(); iter != observers.end(); iter++)
+        (*iter)->update(respstr);
 }

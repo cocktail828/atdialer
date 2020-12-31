@@ -9,7 +9,6 @@
 class ttyReader final : public ISubject
 {
 private:
-    std::mutex rwlock;
     std::string ttydev;
     int ttyfd;
     uint8_t recvbuf[1024 * 30];
