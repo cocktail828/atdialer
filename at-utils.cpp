@@ -8,20 +8,8 @@
 
 using namespace std;
 
-#include <sstream>
-void test()
-{
-    // int *p = new int(10);
-    // vector<int *> v;
-    // v.push_back(p);
-    // v.erase(v.begin());
-    // *p = 10;
-    // std::abort();
-}
-
 int main(int argc, char **argv)
 {
-    test();
     auto reader = ttyReader::ttyInstance("/dev/ttyUSB0");
     ttyClient client(reader);
 
