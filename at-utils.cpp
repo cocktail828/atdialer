@@ -10,7 +10,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    auto reader = ttyReader::ttyInstance("/dev/ttyUSB0");
+    auto reader = ttyReader::singleton("/dev/ttyUSB0");
     ttyClient client(reader);
 
     std::thread polling_thread(&ttyReader::polling, reader);

@@ -23,7 +23,7 @@ private:
 public:
     ~ttyReader();
 
-    static ttyReader *ttyInstance(const char *ttydev);
+    static ttyReader *singleton(const char *ttydev);
 
     void init();
 
