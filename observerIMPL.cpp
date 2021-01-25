@@ -47,7 +47,7 @@ void ttyClient::update(const std::string &respstr)
         if (line.size())
         {
             atrespstrlist.push_back(line);
-            if (ATCommand::atCommandEnd(line))
+            if (pATCmd->atCommandEnd(line))
             {
                 // std::cerr << "cond notify" << std::endl;
                 usrcond.notify_all();
@@ -59,7 +59,7 @@ void ttyClient::update(const std::string &respstr)
 /**
  * state machine process URC or Response and change it's state
  */
-void ttyClient::start_machine(const char *apn, const char *usr, const char *passwd, AUTH auth, IPPROTO iptype, int cid)
+void ttyClient::start_machine()
 {
     do
     {
@@ -70,37 +70,37 @@ void ttyClient::start_machine(const char *apn, const char *usr, const char *pass
         {
         case machine_state::STATE_START:
         {
-            sendCommand(ATCommand::newQuerySIMinfo());
+            sendCommand(pATCmd->newQuerySIMinfo());
             break;
         }
 
         case machine_state::STATE_SIM_READY:
         {
-            sendCommand(ATCommand::newQueryRegisterinfo());
+            sendCommand(pATCmd->newQueryRegisterinfo());
             break;
         }
 
         case machine_state::STATE_REGISTERED:
         {
-            sendCommand(ATCommand::newATConfig());
+            sendCommand(pATCmd->newATConfig());
             break;
         }
 
         case machine_state::STATE_CONFIG_DONE:
         {
-            sendCommand(ATCommand::newQueryDataConnectinfo());
+            sendCommand(pATCmd->newQueryDataConnectinfo());
             break;
         }
 
         case machine_state::STATE_DISCONNECT:
         {
-            sendCommand(ATCommand::newSetupDataCall());
+            sendCommand(pATCmd->newSetupDataCall());
             break;
         }
 
         case machine_state::STATE_CONNECT:
         {
-            sendCommand(ATCommand::newQueryDataConnectinfo());
+            sendCommand(pATCmd->newQueryDataConnectinfo());
             break;
         }
 
@@ -126,16 +126,16 @@ void ttyClient::start_machine(const char *apn, const char *usr, const char *pass
         for (auto iter = atrespstrlist.begin(); iter != atrespstrlist.end(); iter++)
         {
             vecstr.push_back(*iter);
-            if (ATCommand::atCommandEnd(*iter))
+            if (pATCmd->atCommandEnd(*iter))
             {
-                machine_state new_state = ATCommand::parserResp(vecstr);
+                machine_state new_state = pATCmd->parserResp(vecstr);
 
                 if (state == machine_state::STATE_REGISTERED &&
-                    !ATCommand::isUnsocial() && ATCommand::isSuccess())
+                    !pATCmd->isUnsocial() && pATCmd->isSuccess())
                     state = machine_state::STATE_CONFIG_DONE;
 
                 else if (state == machine_state::STATE_CONFIG_DONE &&
-                         !ATCommand::isUnsocial() && !ATCommand::isSuccess())
+                         !pATCmd->isUnsocial() && !pATCmd->isSuccess())
                     state = machine_state::STATE_DISCONNECT;
 
                 else if (state != new_state &&

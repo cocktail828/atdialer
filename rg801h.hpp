@@ -1,12 +1,12 @@
-#ifndef __INTERFACE_AT__
-#define __INTERFACE_AT__
+#ifndef __RG801H_AT__
+#define __RG801H_AT__
 
 #include <string>
 #include <iostream>
 #include <sstream>
 
+#include "at_command.hpp"
 #include "atenum.hpp"
-#include "state_machine.hpp"
 
 const std::string endstr[] = {
     "OK",
@@ -14,40 +14,17 @@ const std::string endstr[] = {
     "ERROR",
 };
 
-class ATCommand
+class RG801HAT final : public ATCommand
 {
-    static bool bunsocial;
-    static bool bsuccess;
-    static int cid;       // contex id
-    static int op;        // operate
-    static bool state;    // autoconnect?
-    static IPPROTO ctype; // 1 ipv4, 2 ipv6, 3 ipv4v6
-    static std::string apn;
-    static std::string user;
-    static std::string passwd;
-    static AUTH auth; // 0 None, 1 PAP, 2 CHAP, 3 PAP or CHAP
 
 public:
-    /**
-     * indicate the message is a response for a request
-     */
-    static bool isUnsocial()
-    {
-        return bunsocial;
-    }
-
-    /**
-     * indicate the request is success or not
-     */
-    static bool isSuccess()
-    {
-        return bsuccess;
-    }
+    RG801HAT(const char *apn, const char *usr, const char *passwd, AUTH auth, IPPROTO iptype, int cid)
+        : ATCommand(apn, usr, passwd, auth, iptype, cid) {}
 
     /**
      * indicate AT command end
      */
-    static bool atCommandEnd(const std::string &str)
+    bool atCommandEnd(const std::string &str)
     {
         bsuccess = false;
         for (unsigned long idx = 0; idx < sizeof(endstr) / sizeof(endstr[0]); idx++)
@@ -66,7 +43,7 @@ public:
     /**
      * build an AT command to query SIM state
      */
-    static std::string newQuerySIMinfo()
+    std::string newQuerySIMinfo()
     {
         /**
          * on error: +CME ERROR: 10
@@ -78,7 +55,7 @@ public:
     /**
      * build an AT command to query registration state
      */
-    static std::string newQueryRegisterinfo()
+    std::string newQueryRegisterinfo()
     {
         return std::string("AT+CEREG?\r\n");
     }
@@ -86,38 +63,41 @@ public:
     /**
      * build an AT command to config IP Protocol, APN, USR, PASSWD, AUTH
      */
-    static std::string newATConfig()
+    std::string newATConfig()
     {
         return std::string("AT+QICSGP=") +
-               std::to_string(cid) + "," +
-               std::to_string(static_cast<int>(ctype)) + "," +
-               "\"\"\r\n";
+               std::to_string(contexid) + "," +
+               std::to_string(static_cast<int>(ipproto)) + "," +
+               safety_string(apn) + "," +
+               safety_string(user) + "," +
+               safety_string(passwd) + "," +
+               std::to_string(static_cast<int>(auth)) + "\r\n";
     }
 
     /**
      * build an AT command to query data connection state
      */
-    static std::string newQueryDataConnectinfo()
+    std::string newQueryDataConnectinfo()
     {
         return std::string("AT+QNETDEVSTATUS=") +
-               std::to_string(cid) + "\r\n";
+               std::to_string(contexid) + "\r\n";
     }
 
     /**
      * build an AT command to setup data call state
      */
-    static std::string newSetupDataCall()
+    std::string newSetupDataCall()
     {
         return std::string("AT+QNETDEVCTL=") +
-               std::to_string(cid) + "," +
-               std::to_string(op) + "," +
-               std::to_string(state) + "\r\n";
+               std::to_string(contexid) + "," +
+               std::to_string(1) + "," +
+               std::to_string(autoconnect) + "\r\n";
     }
 
     /**
      * parser AT command, return a machine_state
      */
-    static machine_state parserResp(const std::vector<std::string> &vecstr)
+    machine_state parserResp(const std::vector<std::string> &vecstr)
     {
         machine_state newstate = machine_state::STATE_INVALID;
 
@@ -145,10 +125,10 @@ public:
             }
             else if (line.find("+QNETDEVSTATUS:") != std::string::npos)
             {
-                int _cid, _op;
+                int _contexid, _op;
 
-                sscanf(line.c_str(), "+QNETDEVSTATUS:%d,%d", &_cid, &_op);
-                if (_cid == cid)
+                sscanf(line.c_str(), "+QNETDEVSTATUS:%d,%d", &_contexid, &_op);
+                if (_contexid == contexid)
                     return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
             }
         }
@@ -157,14 +137,4 @@ public:
     }
 };
 
-bool ATCommand::bunsocial;
-bool ATCommand::bsuccess;
-int ATCommand::cid = 1;
-int ATCommand::op = 1;
-bool ATCommand::state = true;
-IPPROTO ATCommand::ctype = IPPROTO::PROTO_IPV4;
-std::string ATCommand::apn;
-std::string ATCommand::user;
-std::string ATCommand::passwd;
-AUTH ATCommand::auth = AUTH::AUTH_NONE;
-#endif //__INTERFACE_AT__
+#endif //__RG801H_AT__
