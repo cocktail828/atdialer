@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2020-12-30 15:17:52
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-22 13:47:04
+ * @LastEditTime: 2021-01-26 18:44:43
  * @Description: file content
  */
 #ifndef __OBSERVERIMPL__
@@ -29,10 +29,15 @@ private:
     std::string atreqstr;
     std::vector<std::string> atrespstrlist;
     ATCommand *pATCmd;
+    std::string netinfo;
 
 public:
     ttyClient() = delete;
-    ttyClient(ttyReader *reader, ATCommand *cmd) : ttyreader(reader), atreqstr(""), pATCmd(cmd) { ttyreader->addObserver(this); }
+    ttyClient(ttyReader *reader, const std::string &net, ATCommand *cmd)
+        : ttyreader(reader), atreqstr(""), pATCmd(cmd), netinfo(net)
+    {
+        ttyreader->addObserver(this);
+    }
 
     ~ttyClient() { std::cerr << __PRETTY_FUNCTION__ << std::endl; }
 

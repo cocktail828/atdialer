@@ -10,16 +10,12 @@
 
 class Hisilicon final : public ATCommand
 {
-    const std::string endstr[3] = {
-        "OK",
-        "+CME ERROR",
-        "ERROR",
-    };
+    static const std::string endstr[3];
 
 public:
     Hisilicon(const std::string &apn, const std::string &usr, const std::string &passwd,
-              AUTH auth, IPPROTO iptype, int cid)
-        : ATCommand(apn, usr, passwd, auth, iptype, cid) {}
+              AUTH auth, const std::string &pincode, IPPROTO iptype, int cid)
+        : ATCommand(apn, usr, passwd, auth, pincode, iptype, cid) {}
 
     /**
      * indicate AT command end
@@ -50,6 +46,15 @@ public:
          * on success: +CPIN: READY
          */
         return std::string("AT+CPIN?\r\n");
+    }
+
+    /**
+     * build an AT command to query SIM state
+     */
+    std::string newSetPincode()
+    {
+        return std::string("AT+CPIN=") +
+               safety_string(pincode) + "\r\n";
     }
 
     /**
@@ -111,17 +116,19 @@ public:
             std::cerr << "RECV<< " << line << std::endl;
             if (line.find("+CPIN:") != std::string::npos)
             {
-                if (line.find("READY"))
+                if (line.find("READY") != std::string::npos)
                     newstate = machine_state::STATE_SIM_READY;
-                else if (line.find("NOT INSERTED"))
-                    return machine_state::STATE_START;
+                else if (line.find("SIM PIN") != std::string::npos)
+                    newstate = machine_state::STATE_SIM_NEED_PIN;
+                else
+                    newstate = machine_state::STATE_START;
             }
             else if (line.find("+CEREG:") != std::string::npos)
             {
                 int n, stat;
                 sscanf(line.c_str(), "+CEREG: %d,%d", &n, &stat);
                 if (stat == 1)
-                    return machine_state::STATE_REGISTERED;
+                    newstate = machine_state::STATE_REGISTERED;
             }
             else if (line.find("+QNETDEVSTATUS:") != std::string::npos)
             {
@@ -129,12 +136,26 @@ public:
 
                 sscanf(line.c_str(), "+QNETDEVSTATUS:%d,%d", &_contexid, &_op);
                 if (_contexid == contexid)
-                    return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
+                {
+                    // +QNETDEVSTATUS:1,0,"IPV4"
+                    newstate = _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
+                }
+                else if (_contexid > 0xff)
+                {
+                    // +QNETDEVSTATUS: 1802F70A,F0FFFFFF,1102F70A,1102F70A,024E68DA,00000000, 85600, 85600
+                    newstate = machine_state::STATE_CONNECT;
+                }
             }
         }
 
         return newstate;
     }
+};
+
+const std::string Hisilicon::endstr[3] = {
+    "OK",
+    "+CME ERROR",
+    "ERROR",
 };
 
 #endif //__RG801H_AT__

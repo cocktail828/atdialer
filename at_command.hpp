@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2021-01-22 13:22:01
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-26 11:06:21
+ * @LastEditTime: 2021-01-26 14:55:55
  * @Description: file content
  */
 #ifndef __AT_COMMAND__
@@ -27,6 +27,7 @@ protected:
     std::string user;
     std::string passwd;
     AUTH auth; // 0 None, 1 PAP, 2 CHAP, 3 PAP or CHAP
+    std::string pincode;
 
 public:
     ATCommand() : bunsocial(false),
@@ -37,11 +38,12 @@ public:
                   apn(""),
                   user(""),
                   passwd(""),
-                  auth(AUTH::AUTH_NONE) {}
+                  auth(AUTH::AUTH_NONE),
+                  pincode("") {}
 
     ATCommand(const std::string &apn,
               const std::string &usr, const std::string &passwd,
-              AUTH auth, IPPROTO iptype, int cid)
+              AUTH auth, const std::string &pincode, IPPROTO iptype, int cid)
         : bunsocial(false),
           bsuccess(false),
           contexid(cid),
@@ -50,7 +52,8 @@ public:
           apn(apn),
           user(usr),
           passwd(passwd),
-          auth(auth) {}
+          auth(auth),
+          pincode(pincode) {}
 
     virtual ~ATCommand() {}
 
@@ -86,9 +89,15 @@ public:
     virtual std::string newQuerySIMinfo() = 0;
 
     /**
+     * build an AT command to query SIM state
+     */
+    virtual std::string newSetPincode() = 0;
+
+    /**
      * build an AT command to query registration state
      */
-    virtual std::string newQueryRegisterinfo() = 0;
+    virtual std::string
+    newQueryRegisterinfo() = 0;
 
     /**
      * build an AT command to config IP Protocol, APN, USR, PASSWD, AUTH

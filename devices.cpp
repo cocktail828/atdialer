@@ -12,7 +12,30 @@
 
 #include "devices.hpp"
 
-static std::string find_tty_device(const char *dirname)
+static std::string dir_find_net(const char *dirname)
+{
+    struct dirent *ent = NULL;
+    DIR *pdir = NULL;
+
+    pdir = opendir(dirname);
+    if (!pdir)
+        return "";
+
+    while ((ent = readdir(pdir)) != NULL)
+    {
+        if (ent->d_name[0] == '.')
+            continue;
+        else
+        {
+            closedir(pdir);
+            return std::string(ent->d_name);
+        }
+    }
+    closedir(pdir);
+    return "";
+}
+
+static std::string find_device(const char *dirname)
 {
     struct dirent *ent = NULL;
     DIR *pdir = NULL;
@@ -30,6 +53,13 @@ static std::string find_tty_device(const char *dirname)
         {
             closedir(pdir);
             return std::string(ent->d_name);
+        }
+        else if (!strncmp(ent->d_name, "net", 3))
+        {
+            std::string path(dirname);
+            closedir(pdir);
+            path += std::string("/") + ent->d_name;
+            return dir_find_net(path.c_str());
         }
     }
     closedir(pdir);
@@ -104,7 +134,7 @@ int Device::scan_iface(int vid, int pid, std::string usbport, std::string rootdi
         file = std::string(path) + "/bInterfaceNumber";
         iface.ifno = file_get_xint(file);
 
-        iface.ttyusb = find_tty_device(path.c_str());
+        iface.ttyornet = find_device(path.c_str());
 
         if (iface.cls == -1 || iface.subcls == -1 || iface.proto == -1 || iface.ifno == -1)
             continue;
@@ -166,7 +196,7 @@ int Device::scan(const std::string &usbport)
                       << ", Class=" << iter1->cls
                       << ", SubClass=" << iter1->subcls
                       << ", Proto=" << iter1->proto
-                      << ", TTY=" << iter1->ttyusb << std::endl;
+                      << ", NODE=" << iter1->ttyornet << std::endl;
         }
     }
 

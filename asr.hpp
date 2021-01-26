@@ -10,16 +10,12 @@
 
 class ASR final : public ATCommand
 {
-    const std::string endstr[3] = {
-        "OK",
-        "+CME ERROR",
-        "ERROR",
-    };
+    static const std::string endstr[3];
 
 public:
     ASR(const std::string &apn, const std::string &usr, const std::string &passwd,
-        AUTH auth, IPPROTO iptype, int cid)
-        : ATCommand(apn, usr, passwd, auth, iptype, cid) {}
+        AUTH auth, const std::string &pincode, IPPROTO iptype, int cid)
+        : ATCommand(apn, usr, passwd, auth, pincode, iptype, cid) {}
 
     /**
      * indicate AT command end
@@ -53,6 +49,15 @@ public:
     }
 
     /**
+     * build an AT command to query SIM state
+     */
+    std::string newSetPincode()
+    {
+        return std::string("AT+CPIN=") +
+               safety_string(pincode) + "\r\n";
+    }
+
+    /**
      * build an AT command to query registration state
      */
     std::string newQueryRegisterinfo()
@@ -79,8 +84,7 @@ public:
      */
     std::string newQueryDataConnectinfo()
     {
-        return std::string("AT+QNETDEVSTATUS=") +
-               std::to_string(contexid) + "\r\n";
+        return std::string("AT+QNETDEVCTL?\r\n");
     }
 
     /**
@@ -89,9 +93,9 @@ public:
     std::string newSetupDataCall()
     {
         return std::string("AT+QNETDEVCTL=") +
-               std::to_string(contexid) + "," +
                std::to_string(1) + "," +
-               std::to_string(autoconnect) + "\r\n";
+               std::to_string(contexid) + "," +
+               std::to_string(1) + "1\r\n";
     }
 
     /**
@@ -113,7 +117,7 @@ public:
             {
                 if (line.find("READY"))
                     newstate = machine_state::STATE_SIM_READY;
-                else if (line.find("NOT INSERTED"))
+                else
                     return machine_state::STATE_START;
             }
             else if (line.find("+CEREG:") != std::string::npos)
@@ -125,16 +129,20 @@ public:
             }
             else if (line.find("+QNETDEVSTATUS:") != std::string::npos)
             {
-                int _contexid, _op;
+                int _op;
 
-                sscanf(line.c_str(), "+QNETDEVSTATUS:%d,%d", &_contexid, &_op);
-                if (_contexid == contexid)
-                    return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
+                sscanf(line.c_str(), "+QNETDEVSTATUS:%d", &_op);
+                return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
             }
         }
 
         return newstate;
     }
+};
+const std::string ASR::endstr[3] = {
+    "OK",
+    "+CME ERROR",
+    "ERROR",
 };
 
 #endif //__ASR_AT__

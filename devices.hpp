@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2021-01-26 10:21:54
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-26 10:26:33
+ * @LastEditTime: 2021-01-26 17:07:11
  * @Description: file content
  */
 #ifndef __DEVICE_H__
@@ -17,8 +17,8 @@ struct interface
     int subcls;
     int proto;
     int ifno;
-    std::string ttyusb;
-    interface() : cls(0), subcls(0), proto(0), ifno(0), ttyusb("") {}
+    std::string ttyornet;
+    interface() : cls(0), subcls(0), proto(0), ifno(0), ttyornet("") {}
 };
 
 struct usbdev

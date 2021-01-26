@@ -1,6 +1,11 @@
 #include <thread>
 #include <iostream>
 #include <sstream>
+#include <fstream>
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
 
 #include "observerIMPL.hpp"
 
@@ -24,13 +29,13 @@ void ttyClient::sendCommand(std::string &&cmd)
     }
     else
     {
-        std::cerr << "CANNOT SEND>> " << cmd.substr(0, cmd.size() - 2) << std::endl;
+        std::cerr << "TTY NOT READY, CANNOT SEND>> " << cmd.substr(0, cmd.size() - 2) << std::endl;
     }
 }
 
 void ttyClient::update()
 {
-    ttyreader = nullptr;
+    std::cerr << "polling thread notify machine it's quit state" << std::endl;
     usrcond.notify_all();
 }
 
@@ -55,6 +60,49 @@ void ttyClient::update(const std::string &respstr)
     }
 }
 
+static void run_dhcp(const char *net)
+{
+    pid_t pid = 0;
+    const char *udhcpc_path = "/usr/bin/busybox";
+    const char *udhcpc_pidfile = "/tmp/udhcpc.pid";
+    std::ifstream fin(udhcpc_pidfile);
+
+    fin >> pid;
+    fin.close();
+    if (!kill(pid, 0))
+    {
+        std::cerr << "udhcpc pid(" + std::to_string(pid) + ")" + " do renew operation" << std::endl;
+        std::cerr << "udhcpc renew operation: " << (kill(pid, SIGUSR1) ? "fail" : "success") << std::endl;
+    }
+    else
+    {
+        std::cerr << "udhcpc pidfile(" << udhcpc_pidfile << ") is invalid, try to start an client" << std::endl;
+        pid = fork();
+        if (pid < 0)
+        {
+            std::cerr << "fork failed" << std::endl;
+        }
+        else if (pid > 0)
+        {
+            std::cerr << "fork success, child pid is " << pid << std::endl;
+        }
+        else
+        {
+            const char *argv[] = {
+                udhcpc_path,
+                "udhcpc",
+                "-f",
+                "-i",
+                net,
+                "-p",
+                udhcpc_pidfile,
+                (const char *)NULL};
+            int ret = execv(udhcpc_path, (char **)argv);
+            std::cerr << "execv fail code " << ret << std::endl;
+        }
+    }
+}
+
 /**
  * state machine process URC or Response and change it's state
  */
@@ -62,6 +110,7 @@ void ttyClient::start_machine()
 {
     do
     {
+        int wait_time = 30;
         std::unique_lock<std::mutex> _lk(usrlock);
 
         // std::cerr << "current state: " << static_cast<int>(state) << std::endl;
@@ -70,6 +119,12 @@ void ttyClient::start_machine()
         case machine_state::STATE_START:
         {
             sendCommand(pATCmd->newQuerySIMinfo());
+            break;
+        }
+
+        case machine_state::STATE_SIM_NEED_PIN:
+        {
+            sendCommand(pATCmd->newSetPincode());
             break;
         }
 
@@ -109,15 +164,23 @@ void ttyClient::start_machine()
         }
         }
 
-        if (usrcond.wait_for(_lk, std::chrono::seconds(30)) == std::cv_status::timeout)
+        // check tty ready state before wait
+        if (!ttyreader->ready())
         {
-            std::cerr << "TIMEOUT(30s) CMD: " << atreqstr << std::endl;
+            std::cerr << "machine stop for polling reader is not ready" << std::endl;
+            break;
+        }
+
+        if (usrcond.wait_for(_lk, std::chrono::seconds(wait_time)) == std::cv_status::timeout)
+        {
+            std::cerr << "TIMEOUT(" << std::to_string(wait_time) << "s) CMD: " << atreqstr << std::endl;
             continue;
         }
 
+        // check tty ready state after wait
         if (!ttyreader->ready())
         {
-            std::cerr << "machine stop for reader is not ready" << std::endl;
+            std::cerr << "machine stop for polling reader is not ready" << std::endl;
             break;
         }
 
@@ -128,9 +191,12 @@ void ttyClient::start_machine()
             if (pATCmd->atCommandEnd(*iter))
             {
                 machine_state new_state = pATCmd->parserResp(vecstr);
-
-                if (state == machine_state::STATE_REGISTERED &&
+                if (state == machine_state::STATE_SIM_NEED_PIN &&
                     !pATCmd->isUnsocial() && pATCmd->isSuccess())
+                    state = machine_state::STATE_START;
+
+                else if (state == machine_state::STATE_REGISTERED &&
+                         !pATCmd->isUnsocial() && pATCmd->isSuccess())
                     state = machine_state::STATE_CONFIG_DONE;
 
                 else if (state == machine_state::STATE_CONFIG_DONE &&
@@ -147,6 +213,17 @@ void ttyClient::start_machine()
         }
 
         if (state == machine_state::STATE_CONNECT)
+        {
             std::cerr << "trigger DHCP operation" << std::endl;
+            run_dhcp(netinfo.c_str());
+            wait_time = 10;
+            if (usrcond.wait_for(_lk, std::chrono::seconds(wait_time)) == std::cv_status::timeout)
+            {
+                std::cerr << "Time reached " << std::to_string(wait_time) << " seconds" << std::endl;
+                continue;
+            }
+        }
     } while (1);
+
+    std::cerr << "machine is stoped" << std::endl;
 }

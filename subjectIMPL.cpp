@@ -108,7 +108,10 @@ void ttyReader::polling()
                 // serial closed?
                 if ((events[i].events & EPOLLRDHUP) ||
                     (events[i].events & (EPOLLERR | EPOLLHUP)))
+                {
+                    std::cerr << "polling thread get event: 0x" << std::hex << events[i].events << std::endl;
                     return;
+                }
 
                 if (events[i].events & EPOLLIN)
                 {
@@ -118,6 +121,11 @@ void ttyReader::polling()
             }
         }
 
+        if (access(ttydev.c_str(), F_OK))
+        {
+            std::cerr << "cannot access device: " << ttydev << std::endl;
+            break;
+        }
     } while (1);
 }
 
