@@ -3,7 +3,6 @@
 #include <sstream>
 
 #include "observerIMPL.hpp"
-#include "rg801h.hpp"
 
 std::mutex ttyClient::usrlock;
 std::condition_variable ttyClient::usrcond;

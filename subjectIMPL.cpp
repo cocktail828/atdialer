@@ -22,7 +22,7 @@ ttyReader::~ttyReader()
     ttydev.clear();
 }
 
-ttyReader *ttyReader::singleton(const char *ttydev)
+ttyReader *ttyReader::singleton(const std::string &ttydev)
 {
     static ttyReader *instance_ = new ttyReader(ttydev);
     instance_->init();

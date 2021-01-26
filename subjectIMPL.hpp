@@ -1,3 +1,10 @@
+/*
+ * @Author: sinpo828
+ * @Date: 2020-12-30 09:56:00
+ * @LastEditors: sinpo828
+ * @LastEditTime: 2021-01-26 11:04:31
+ * @Description: file content
+ */
 #ifndef __SUBJECTIMPL__
 #define __SUBJECTIMPL__
 
@@ -18,12 +25,12 @@ private:
     ttyReader &operator=(const ttyReader &) = delete;
     ttyReader(const ttyReader &) = delete;
     ttyReader(ttyReader &&) = delete;
-    ttyReader(const char *d) : ttydev(d), ttyfd(-1) {}
+    ttyReader(const std::string &d) : ttydev(d), ttyfd(-1) {}
 
 public:
     ~ttyReader();
 
-    static ttyReader *singleton(const char *ttydev);
+    static ttyReader *singleton(const std::string &ttydev);
 
     void init();
 

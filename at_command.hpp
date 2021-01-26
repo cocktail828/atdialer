@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2021-01-22 13:22:01
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-22 14:00:10
+ * @LastEditTime: 2021-01-26 11:06:21
  * @Description: file content
  */
 #ifndef __AT_COMMAND__
@@ -39,7 +39,9 @@ public:
                   passwd(""),
                   auth(AUTH::AUTH_NONE) {}
 
-    ATCommand(const char *apn, const char *usr, const char *passwd, AUTH auth, IPPROTO iptype, int cid)
+    ATCommand(const std::string &apn,
+              const std::string &usr, const std::string &passwd,
+              AUTH auth, IPPROTO iptype, int cid)
         : bunsocial(false),
           bsuccess(false),
           contexid(cid),

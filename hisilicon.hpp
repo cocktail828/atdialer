@@ -8,17 +8,17 @@
 #include "at_command.hpp"
 #include "atenum.hpp"
 
-const std::string endstr[] = {
-    "OK",
-    "+CME ERROR",
-    "ERROR",
-};
-
-class RG801HAT final : public ATCommand
+class Hisilicon final : public ATCommand
 {
+    const std::string endstr[3] = {
+        "OK",
+        "+CME ERROR",
+        "ERROR",
+    };
 
 public:
-    RG801HAT(const char *apn, const char *usr, const char *passwd, AUTH auth, IPPROTO iptype, int cid)
+    Hisilicon(const std::string &apn, const std::string &usr, const std::string &passwd,
+              AUTH auth, IPPROTO iptype, int cid)
         : ATCommand(apn, usr, passwd, auth, iptype, cid) {}
 
     /**
