@@ -132,10 +132,10 @@ public:
             }
             else if (line.find("+QNETDEVSTATUS:") != std::string::npos)
             {
-                int _contexid, _op;
+                uint32_t _contexid, _op;
 
-                sscanf(line.c_str(), "+QNETDEVSTATUS:%d,%d", &_contexid, &_op);
-                if (_contexid == contexid)
+                sscanf(line.c_str(), "+QNETDEVSTATUS:%x,%x", &_contexid, &_op);
+                if (_contexid == (uint32_t)contexid)
                 {
                     // +QNETDEVSTATUS:1,0,"IPV4"
                     newstate = _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;

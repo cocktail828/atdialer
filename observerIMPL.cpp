@@ -69,14 +69,14 @@ static void run_dhcp(const char *net)
 
     fin >> pid;
     fin.close();
-    if (!kill(pid, 0))
+    if (pid && !kill(pid, 0))
     {
         std::cerr << "udhcpc pid(" + std::to_string(pid) + ")" + " do renew operation" << std::endl;
         std::cerr << "udhcpc renew operation: " << (kill(pid, SIGUSR1) ? "fail" : "success") << std::endl;
     }
     else
     {
-        std::cerr << "udhcpc pidfile(" << udhcpc_pidfile << ") is invalid, try to start an client" << std::endl;
+        std::cerr << "udhcpc pidfile(" << udhcpc_pidfile << ") is invalid, try to start a new client" << std::endl;
         pid = fork();
         if (pid < 0)
         {
@@ -216,7 +216,6 @@ void ttyClient::start_machine()
         {
             std::cerr << "trigger DHCP operation" << std::endl;
             run_dhcp(netinfo.c_str());
-            wait_time = 10;
             if (usrcond.wait_for(_lk, std::chrono::seconds(wait_time)) == std::cv_status::timeout)
             {
                 std::cerr << "Time reached " << std::to_string(wait_time) << " seconds" << std::endl;
