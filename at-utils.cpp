@@ -9,6 +9,7 @@
 #include <thread>
 
 #include <getopt.h>
+#include <signal.h>
 
 #include "subjectIMPL.hpp"
 #include "observerIMPL.hpp"
@@ -202,6 +203,7 @@ int main(int argc, char **argv)
     int cid = 1;
     ATCommand *pATCmd = nullptr;
 
+    signal(SIGCHLD, SIG_IGN);
     ON_SCOPE_EXIT
     {
         if (pATCmd)
