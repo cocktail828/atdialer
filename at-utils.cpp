@@ -9,6 +9,7 @@
 #include <thread>
 
 #include <getopt.h>
+#include <signal.h>
 
 #include "subjectIMPL.hpp"
 #include "observerIMPL.hpp"
@@ -205,6 +206,7 @@ int main(int argc, char **argv)
     int cid = 1;
     ATCommand *pATCmd = nullptr;
 
+    signal(SIGCHLD, SIG_IGN);
     ON_SCOPE_EXIT
     {
         if (pATCmd)
@@ -234,18 +236,18 @@ int main(int argc, char **argv)
         case 'A':
             if (string(optarg).find("none") != string::npos)
                 auth = AUTH::AUTH_NONE;
+            else if (string(optarg).find("pap_chap") != string::npos)
+                auth = AUTH::AUTH_PAP_CHAP;
             else if (string(optarg).find("pap") != string::npos)
                 auth = AUTH::AUTH_PAP;
             else if (string(optarg).find("chap") != string::npos)
                 auth = AUTH::AUTH_CHAP;
-            else if (string(optarg).find("pap_chap") != string::npos)
-                auth = AUTH::AUTH_PAP_CHAP;
             else
             {
-                cerr << "error AUTH: " << optarg << std::endl;
+                cerr << "error auth: " << optarg << std::endl;
                 return -1;
             }
-            cerr << "AUTH: " << optarg << std::endl;
+            cerr << "auth: " << optarg << std::endl;
             break;
         case 'c':
             cerr << "contextid: " << optarg << std::endl;
