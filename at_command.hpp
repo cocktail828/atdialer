@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2021-01-22 13:22:01
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-02-01 11:37:36
+ * @LastEditTime: 2021-02-01 14:38:26
  * @Description: file content
  */
 #ifndef __AT_COMMAND__
@@ -13,13 +13,6 @@
 
 #include "atenum.hpp"
 #include "state_machine.hpp"
-
-enum class ATExpectResp
-{
-    EXPT_NONE, // the request does not care about response or whether it's success or not
-    EXPT_OK,   // the request expect just OK response and do not care about response data
-    EXPT_DATA, // the request expect a response with data
-};
 
 class ATCommand
 {
@@ -36,9 +29,6 @@ protected:
     AUTH auth; // 0 None, 1 PAP, 2 CHAP, 3 PAP or CHAP
     std::string pincode;
 
-    /* expect response */
-    ATExpectResp expect_state;
-
 public:
     ATCommand() : bunsocial(false),
                   bsuccess(false),
@@ -49,8 +39,7 @@ public:
                   user(""),
                   passwd(""),
                   auth(AUTH::AUTH_NONE),
-                  pincode(""),
-                  expect_state(ATExpectResp::EXPT_NONE) {}
+                  pincode("") {}
 
     ATCommand(const std::string &apn,
               const std::string &usr, const std::string &passwd,
@@ -64,8 +53,7 @@ public:
           user(usr),
           passwd(passwd),
           auth(auth),
-          pincode(pincode),
-          expect_state(ATExpectResp::EXPT_NONE) {}
+          pincode(pincode) {}
 
     virtual ~ATCommand() {}
 
@@ -88,11 +76,6 @@ public:
     bool isSuccess()
     {
         return bsuccess;
-    }
-
-    ATExpectResp get_expt_state()
-    {
-        return expect_state;
     }
 
     /**
@@ -133,7 +116,7 @@ public:
     /**
      * parser AT command, return a machine_state
      */
-    virtual machine_state parserResp(const std::vector<std::string> &vecstr) = 0;
+    virtual machine_state parserResp(const std::vector<std::string> &vecstr, const machine_state state) = 0;
 };
 
 #endif //__AT_COMMAND__

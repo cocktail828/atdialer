@@ -45,7 +45,6 @@ public:
          * on error: +CME ERROR: 10
          * on success: +CPIN: READY
          */
-        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CPIN?\r\n");
     }
 
@@ -54,7 +53,6 @@ public:
      */
     std::string newSetPincode()
     {
-        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+CPIN=") +
                safety_string(pincode) + "\r\n";
     }
@@ -64,7 +62,6 @@ public:
      */
     std::string newQueryRegisterinfo()
     {
-        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CEREG?\r\n");
     }
 
@@ -73,22 +70,18 @@ public:
      */
     std::string newATConfig()
     {
-        expect_state = ATExpectResp::EXPT_OK;
         auto reqstr = std::string("AT+QICSGP=") +
                       std::to_string(contexid) + "," +
-                      std::to_string(static_cast<int>(ipproto));
+                      std::to_string(static_cast<int>(ipproto)) + ",\"\"";
 
-        if (!apn.empty())
+        reqstr += "," + apn;
+        if (!user.empty())
         {
-            reqstr += "," + apn;
-            if (!user.empty())
+            reqstr += "," + user;
+            if (!passwd.empty())
             {
-                reqstr += "," + user;
-                if (!passwd.empty())
-                {
-                    reqstr += "," + passwd;
-                    reqstr += std::to_string(static_cast<int>(auth));
-                }
+                reqstr += "," + passwd;
+                reqstr += std::to_string(static_cast<int>(auth));
             }
         }
 
@@ -101,7 +94,6 @@ public:
      */
     std::string newQueryDataConnectinfo()
     {
-        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+QNETDEVSTATUS=") +
                std::to_string(contexid) + "\r\n";
     }
@@ -111,7 +103,6 @@ public:
      */
     std::string newSetupDataCall()
     {
-        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+QNETDEVCTL=") +
                std::to_string(contexid) + "," +
                std::to_string(1) + "," +
@@ -121,7 +112,7 @@ public:
     /**
      * parser AT command, return a machine_state
      */
-    machine_state parserResp(const std::vector<std::string> &vecstr)
+    machine_state parserResp(const std::vector<std::string> &vecstr, const machine_state state)
     {
         machine_state newstate = machine_state::STATE_INVALID;
 
@@ -166,6 +157,15 @@ public:
                 }
             }
         }
+
+        if (state == machine_state::STATE_SIM_NEED_PIN)
+            newstate = isSuccess() ? machine_state::STATE_START : state;
+
+        else if (state == machine_state::STATE_REGISTERED)
+            newstate = isSuccess() ? machine_state::STATE_CONFIG_DONE : state;
+
+        else if (state == machine_state::STATE_CONFIG_DONE)
+            newstate = !isSuccess() ? machine_state::STATE_DISCONNECT : state;
 
         return newstate;
     }
