@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2020-12-29 10:37:58
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-26 18:43:24
+ * @LastEditTime: 2021-02-01 09:45:54
  * @Description: file content
  */
 #include <iostream>
@@ -78,11 +78,14 @@ struct match_usb_info
     }
 
 match_usb_info device_list[] = {
+    /* RG801H */
     USB_AND_INTF_INFO(attype::AT_HISILICON, 0x2c7c, 0x8101,
                       USB_INTF_INFO(filter::FLT_INTF, 0xff, 0x02, 0x12),
                       USB_INTF_INFO(filter::FLT_INTF, 0x02, 0x0d, 0x00)),
-    // USB_AND_INTF_INFO(attype::AT_ASR, intftype::INTF_TYPE_AT, 0x2c7c, 0x6004, 0x0a, 0x00, 0x00),
-    // USB_AND_INTF_INFO(attype::AT_HISILICON, 0x0403, 0x6001, 0xff, 0xff, 0xff),
+    /* EG060V */
+    USB_AND_INTF_INFO(attype::AT_ASR, 0x2c7c, 0x6004,
+                      USB_INTF_INFO(filter::FLT_INTF, 0xff, 0x00, 0x00),
+                      USB_INTF_INFO(filter::FLT_INTF, 0xe0, 0x01, 0x03)),
 };
 
 static string g_netinterface("");

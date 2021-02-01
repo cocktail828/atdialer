@@ -191,17 +191,20 @@ void ttyClient::start_machine()
             if (pATCmd->atCommandEnd(*iter))
             {
                 machine_state new_state = pATCmd->parserResp(vecstr);
-                if (state == machine_state::STATE_SIM_NEED_PIN &&
+
+                /* those requests only expect OK */
+                if (pATCmd->get_expt_state() == ATExpectResp::EXPT_OK &&
                     !pATCmd->isUnsocial() && pATCmd->isSuccess())
-                    state = machine_state::STATE_START;
+                {
+                    if (state == machine_state::STATE_SIM_NEED_PIN)
+                        state = machine_state::STATE_START;
 
-                else if (state == machine_state::STATE_REGISTERED &&
-                         !pATCmd->isUnsocial() && pATCmd->isSuccess())
-                    state = machine_state::STATE_CONFIG_DONE;
+                    else if (state == machine_state::STATE_REGISTERED)
+                        state = machine_state::STATE_CONFIG_DONE;
 
-                else if (state == machine_state::STATE_CONFIG_DONE &&
-                         !pATCmd->isUnsocial() && !pATCmd->isSuccess())
-                    state = machine_state::STATE_DISCONNECT;
+                    else if (state == machine_state::STATE_CONFIG_DONE)
+                        state = machine_state::STATE_DISCONNECT;
+                }
 
                 else if (state != new_state &&
                          new_state != machine_state::STATE_INVALID)

@@ -45,6 +45,7 @@ public:
          * on error: +CME ERROR: 10
          * on success: +CPIN: READY
          */
+        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CPIN?\r\n");
     }
 
@@ -53,6 +54,7 @@ public:
      */
     std::string newSetPincode()
     {
+        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+CPIN=") +
                safety_string(pincode) + "\r\n";
     }
@@ -62,6 +64,7 @@ public:
      */
     std::string newQueryRegisterinfo()
     {
+        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CEREG?\r\n");
     }
 
@@ -70,13 +73,27 @@ public:
      */
     std::string newATConfig()
     {
-        return std::string("AT+QICSGP=") +
-               std::to_string(contexid) + "," +
-               std::to_string(static_cast<int>(ipproto)) + "," +
-               safety_string(apn) + "," +
-               safety_string(user) + "," +
-               safety_string(passwd) + "," +
-               std::to_string(static_cast<int>(auth)) + "\r\n";
+        expect_state = ATExpectResp::EXPT_OK;
+        auto reqstr = std::string("AT+QICSGP=") +
+                      std::to_string(contexid) + "," +
+                      std::to_string(static_cast<int>(ipproto));
+
+        if (!apn.empty())
+        {
+            reqstr += "," + apn;
+            if (!user.empty())
+            {
+                reqstr += "," + user;
+                if (!passwd.empty())
+                {
+                    reqstr += "," + passwd;
+                    reqstr += std::to_string(static_cast<int>(auth));
+                }
+            }
+        }
+
+        reqstr += "\r\n";
+        return reqstr;
     }
 
     /**
@@ -84,6 +101,7 @@ public:
      */
     std::string newQueryDataConnectinfo()
     {
+        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+QNETDEVSTATUS=") +
                std::to_string(contexid) + "\r\n";
     }
@@ -93,6 +111,7 @@ public:
      */
     std::string newSetupDataCall()
     {
+        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+QNETDEVCTL=") +
                std::to_string(contexid) + "," +
                std::to_string(1) + "," +

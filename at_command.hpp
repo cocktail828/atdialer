@@ -2,7 +2,7 @@
  * @Author: sinpo828
  * @Date: 2021-01-22 13:22:01
  * @LastEditors: sinpo828
- * @LastEditTime: 2021-01-26 14:55:55
+ * @LastEditTime: 2021-02-01 11:37:36
  * @Description: file content
  */
 #ifndef __AT_COMMAND__
@@ -13,6 +13,13 @@
 
 #include "atenum.hpp"
 #include "state_machine.hpp"
+
+enum class ATExpectResp
+{
+    EXPT_NONE, // the request does not care about response or whether it's success or not
+    EXPT_OK,   // the request expect just OK response and do not care about response data
+    EXPT_DATA, // the request expect a response with data
+};
 
 class ATCommand
 {
@@ -29,6 +36,9 @@ protected:
     AUTH auth; // 0 None, 1 PAP, 2 CHAP, 3 PAP or CHAP
     std::string pincode;
 
+    /* expect response */
+    ATExpectResp expect_state;
+
 public:
     ATCommand() : bunsocial(false),
                   bsuccess(false),
@@ -39,7 +49,8 @@ public:
                   user(""),
                   passwd(""),
                   auth(AUTH::AUTH_NONE),
-                  pincode("") {}
+                  pincode(""),
+                  expect_state(ATExpectResp::EXPT_NONE) {}
 
     ATCommand(const std::string &apn,
               const std::string &usr, const std::string &passwd,
@@ -53,7 +64,8 @@ public:
           user(usr),
           passwd(passwd),
           auth(auth),
-          pincode(pincode) {}
+          pincode(pincode),
+          expect_state(ATExpectResp::EXPT_NONE) {}
 
     virtual ~ATCommand() {}
 
@@ -76,6 +88,11 @@ public:
     bool isSuccess()
     {
         return bsuccess;
+    }
+
+    ATExpectResp get_expt_state()
+    {
+        return expect_state;
     }
 
     /**

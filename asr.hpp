@@ -45,6 +45,7 @@ public:
          * on error: +CME ERROR: 10
          * on success: +CPIN: READY
          */
+        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CPIN?\r\n");
     }
 
@@ -53,6 +54,7 @@ public:
      */
     std::string newSetPincode()
     {
+        expect_state = ATExpectResp::EXPT_OK;
         return std::string("AT+CPIN=") +
                safety_string(pincode) + "\r\n";
     }
@@ -62,6 +64,7 @@ public:
      */
     std::string newQueryRegisterinfo()
     {
+        expect_state = ATExpectResp::EXPT_DATA;
         return std::string("AT+CEREG?\r\n");
     }
 
@@ -70,13 +73,14 @@ public:
      */
     std::string newATConfig()
     {
-        return std::string("AT+QICSGP=") +
-               std::to_string(contexid) + "," +
-               std::to_string(static_cast<int>(ipproto)) + "," +
-               safety_string(apn) + "," +
-               safety_string(user) + "," +
-               safety_string(passwd) + "," +
-               std::to_string(static_cast<int>(auth)) + "\r\n";
+        expect_state = ATExpectResp::EXPT_OK;
+        auto reqstr = std::string("AT+ZGDCONT=") +
+                      std::to_string(contexid) + ",IP";
+        if (!apn.empty())
+            reqstr += "," + apn;
+        reqstr += "\r\n";
+
+        return reqstr;
     }
 
     /**
@@ -84,7 +88,8 @@ public:
      */
     std::string newQueryDataConnectinfo()
     {
-        return std::string("AT+QNETDEVCTL?\r\n");
+        expect_state = ATExpectResp::EXPT_OK;
+        return std::string("AT+ZGACT?\r\n");
     }
 
     /**
@@ -92,10 +97,10 @@ public:
      */
     std::string newSetupDataCall()
     {
-        return std::string("AT+QNETDEVCTL=") +
+        expect_state = ATExpectResp::EXPT_OK;
+        return std::string("AT+ZGACT=") +
                std::to_string(1) + "," +
-               std::to_string(contexid) + "," +
-               std::to_string(1) + "1\r\n";
+               std::to_string(contexid) + "\r\n";
     }
 
     /**
@@ -106,7 +111,8 @@ public:
         machine_state newstate = machine_state::STATE_INVALID;
 
         bunsocial = true;
-        if (vecstr.size() && vecstr[0].compare(0, 3, "AT+") == 0)
+        if ((vecstr.size() > 3 && vecstr[0].compare(0, 3, "AT+") == 0) ||
+            (vecstr.size() == 2 && vecstr[0].compare(0, 2, "AT") == 0))
             bunsocial = false;
 
         for (auto iter = vecstr.begin(); iter != vecstr.end(); iter++)
@@ -115,10 +121,12 @@ public:
             std::cerr << "RECV<< " << line << std::endl;
             if (line.find("+CPIN:") != std::string::npos)
             {
-                if (line.find("READY"))
+                if (line.find("READY") != std::string::npos)
                     newstate = machine_state::STATE_SIM_READY;
+                else if (line.find("SIM PIN") != std::string::npos)
+                    newstate = machine_state::STATE_SIM_NEED_PIN;
                 else
-                    return machine_state::STATE_START;
+                    newstate = machine_state::STATE_START;
             }
             else if (line.find("+CEREG:") != std::string::npos)
             {
@@ -127,11 +135,18 @@ public:
                 if (stat == 1)
                     return machine_state::STATE_REGISTERED;
             }
-            else if (line.find("+QNETDEVSTATUS:") != std::string::npos)
+            else if (line.find("+ZCONSTAT:") != std::string::npos)
             {
                 int _op;
 
-                sscanf(line.c_str(), "+QNETDEVSTATUS:%d", &_op);
+                sscanf(line.c_str(), "+ZCONSTAT:%d", &_op);
+                return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
+            }
+            else if (line.find("+ZGACT:") != std::string::npos)
+            {
+                int _op;
+
+                sscanf(line.c_str(), "+ZGACT:%d", &_op);
                 return _op ? machine_state::STATE_CONNECT : machine_state::STATE_DISCONNECT;
             }
         }
